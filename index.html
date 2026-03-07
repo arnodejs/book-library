@@ -7,5 +7,51 @@
     <script src="script.js" defer></script>
     <title>Book Library</title>
   </head>
-  <body></body>
+  <body>
+    <button id="new-book-btn" class="button">New book</button>
+    <dialog id="dialog">
+      <div class="dialog-content">
+        <button id="dialog-close-btn">&times;</button>
+        <form class="form">
+          <p class="form-group">
+            <label for="name">Name</label>
+            <input id="name" type="text" name="name" required />
+          </p>
+          <p>
+            <label for="author">Author</label>
+            <input id="author" type="text" name="author" required />
+          </p>
+          <p class="form-group">
+            <label for="pages">Pages</label>
+            <input
+              id="pages"
+              type="number"
+              min="1"
+              max="5000"
+              required
+              name="pages"
+            />
+          </p>
+          <p class="form-group">
+            <button class="new-book-btn">Add to library</button>
+          </p>
+        </form>
+      </div>
+    </dialog>
+    <table class="library">
+      <caption>
+        My Library
+      </caption>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Author</th>
+          <th>Pages</th>
+          <th>Read status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </body>
 </html>
