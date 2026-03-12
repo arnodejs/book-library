@@ -1,127 +1,155 @@
-// DOM Nodes
+class Library {
+  library = [];
+  constructor() {}
 
-const myLibraryBodyNode = document.querySelector('.library tbody');
-const dialogNode = document.getElementById('dialog');
-const dialogCloseBtn = document.getElementById('dialog-close-btn');
-const bookFormNode = document.querySelector('.form');
-const newBookBtn = document.getElementById('new-book-btn');
+  deleteBook(id) {
+    this.library = this.library.filter((book) => book.id !== id);
+  }
 
-const closeDialog = () => dialogNode.close();
-const showDialog = () => dialogNode.show();
+  addBookToLibrary({ name, author, pages, read }) {
+    const book = new Book(name, author, pages, read);
+    this.library.push(book);
 
-dialogCloseBtn.addEventListener('click', closeDialog);
-newBookBtn.addEventListener('click', showDialog);
+    return book;
+  }
 
-const myLibrary = [];
+  getBookById(id) {
+    const book = this.library.find((book) => book.id === id);
 
-function Book(name, author, pages) {
-  if (!new.target) throw new Error('Book must be called with new');
+    if (!book) return;
 
-  this.id = crypto.randomUUID();
-  this.name = name;
-  this.author = author;
-  this.pages = pages;
-  this.isRead = false;
+    return book;
+  }
 }
 
-Book.prototype.changeReadStatus = function () {
-  this.isRead = !this.isRead;
-};
+class Book {
+  constructor(name, author, pages, read) {
+    this.id = crypto.randomUUID();
+    this.name = name;
+    this.author = author;
+    this.pages = pages;
+    this.read = read;
+  }
 
-Book.prototype.deleteBook = function () {
-  const findIndex = myLibrary.findIndex((book) => book.id === this.id);
-  const answer = confirm('Do you want to delete book?');
-
-  if (answer) myLibrary.splice(findIndex, 1);
-};
-
-function addBookToLibrary(name, author, pages) {
-  if (!name.trim() || !author.trim() || !pages) return;
-
-  const book = new Book(name.trim(), author.trim(), pages);
-  myLibrary.push(book);
-  renderBooks();
+  toggleReadStatus() {
+    this.read = !this.read;
+  }
 }
 
-function createBookHTML({ id, name, author, pages, isRead }) {
-  // Create table columns
-  const tr = document.createElement('tr');
-  const tdName = document.createElement('td');
-  const tdAuthor = document.createElement('td');
-  const tdPages = document.createElement('td');
-  const tdReadStatus = document.createElement('td');
-  const tdDelete = document.createElement('td');
+const library = new Library();
 
-  // Add event listener to delete and read status buttons
-  const tdReadStatusCheckbox = document.createElement('input');
-  tdReadStatusCheckbox.type = 'checkbox';
-  tdReadStatusCheckbox.checked = isRead;
-  const tdDeleteBtn = document.createElement('button');
-  tdDeleteBtn.classList.add('book-delete-btn', 'book-action');
-  tdReadStatusCheckbox.classList.add('book-read-checkbox');
+class UIController {
+  libraryEl = document.querySelector('.library tbody');
+  newBookForm = document.querySelector('.form');
+  dialogEl = document.getElementById('dialog');
+  dialogCloseBtn = document.getElementById('dialog-close-btn');
+  newBookBtn = document.getElementById('new-book-btn');
+  constructor() {
+    this.newBookBtn.addEventListener('click', () => this.dialogEl.show());
+    this.dialogCloseBtn.addEventListener('click', () => this.dialogEl.close());
+    this.newBookForm.addEventListener(
+      'submit',
+      this.handlerNewBookForm.bind(this)
+    );
+  }
 
-  tdReadStatus.append(tdReadStatusCheckbox);
-  tdDelete.append(tdDeleteBtn);
-  tdDeleteBtn.addEventListener('click', handleDeleteBook);
-  tdReadStatusCheckbox.addEventListener('change', handleReadStatus);
+  createBookHTML(book) {
+    this.createRow(book);
+  }
 
-  // Append columns to row
-  tr.setAttribute('data-id', id);
-  tdName.textContent = name;
-  tdAuthor.textContent = author;
-  tdPages.textContent = pages;
-  tr.append(tdName, tdAuthor, tdPages, tdReadStatus, tdDelete);
+  createRow({ id, name, author, pages, read }) {
+    const tr = document.createElement('tr');
+    tr.dataset.id = id;
+    const tdName = this.createColumn(name);
+    const tdAuthor = this.createColumn(author);
+    const tdPages = this.createColumn(pages);
+    const tdRead = this.createColumn(read ? 'Read' : 'Not read');
+    tdRead.setAttribute('id', 'td-read');
+    const tdActions = this.createColumn('');
+    const tdReadToggle = this.createButton(
+      'Toggle Read',
+      this.handlerToggleRead.bind(this)
+    );
+    const tdDeleteBook = this.createButton(
+      'Delete book',
+      this.handlerDeleteBook.bind(this)
+    );
 
-  return tr;
+    tdActions.append(tdReadToggle, tdDeleteBook);
+    tr.append(tdName, tdAuthor, tdPages, tdRead, tdActions);
+    this.libraryEl.append(tr);
+  }
+
+  createColumn(text) {
+    const td = document.createElement('td');
+    td.textContent = text;
+
+    return td;
+  }
+
+  createButton(text, handler) {
+    const button = document.createElement('button');
+    button.classList.add('button');
+    button.textContent = text;
+
+    if (handler) {
+      button.addEventListener('click', handler);
+    }
+
+    return button;
+  }
+
+  handlerToggleRead(e) {
+    const { book, tr } = this.getBookFromEvent(e);
+    const td = tr.querySelector('#td-read');
+    book.toggleReadStatus();
+    td.textContent = book.read ? 'Read' : 'Not read';
+  }
+
+  handlerDeleteBook(e) {
+    const { book, tr } = this.getBookFromEvent(e);
+
+    const isAllow = confirm('Do you want delete book?');
+
+    if (isAllow) {
+      library.deleteBook(book.id);
+      this.libraryEl.removeChild(tr);
+    }
+  }
+
+  getBookFromEvent(e) {
+    const tr = e.target.closest('tr');
+
+    if (!tr) return;
+
+    const id = tr.dataset.id;
+    const book = library.getBookById(id);
+
+    if (!book) return;
+
+    return { book, tr };
+  }
+
+  handlerNewBookForm(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const { name, author, pages, read } = Object.fromEntries(formData);
+
+    if (!name.trim() || !author.trim()) return;
+
+    const newBook = {
+      name: name.trim(),
+      author: author.trim(),
+      pages: Number(pages),
+      read: read ? true : false,
+    };
+
+    const book = library.addBookToLibrary(newBook);
+    this.createBookHTML(book);
+    this.dialogEl.close();
+    form.reset();
+  }
 }
 
-function handleDeleteBook(e) {
-  const book = getBookFromEvent(e);
-  if (!book) return;
-
-  book.deleteBook();
-  renderBooks();
-}
-
-function getBookFromEvent(e) {
-  const tr = e.target.closest('tr');
-
-  if (!tr) return;
-
-  const id = tr.dataset.id;
-  const book = myLibrary.find((book) => book.id === id);
-
-  return book;
-}
-
-function handleReadStatus(e) {
-  const book = getBookFromEvent(e);
-
-  if (!book) return;
-
-  book.changeReadStatus();
-}
-
-function renderBooks() {
-  myLibraryBodyNode.textContent = '';
-
-  myLibrary.forEach((book) => {
-    const tr = createBookHTML(book);
-    myLibraryBodyNode.append(tr);
-  });
-}
-
-function handleBookFormSubmit(e) {
-  e.preventDefault();
-
-  const formData = new FormData(e.target);
-  const { name, author, pages } = Object.fromEntries(formData);
-
-  addBookToLibrary(name, author, pages);
-  closeDialog();
-  bookFormNode.reset();
-}
-
-bookFormNode.addEventListener('submit', handleBookFormSubmit);
-
-renderBooks();
+new UIController();
